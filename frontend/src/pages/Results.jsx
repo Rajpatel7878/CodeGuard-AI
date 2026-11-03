@@ -1,3 +1,7 @@
+/**
+ * Detailed code review results page displaying AI agent findings,
+ * quality scores, metrics breakdown, and interactive code diffs.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import {
