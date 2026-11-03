@@ -313,7 +313,10 @@ async def google_callback(code: str, state: str, request: Request, db: Session =
         return response
 
 
-# GitHub OAuth
+# ============================================================================
+# GitHub OAuth 2.0 Integration
+# Initiates authorization flow, exchanges callback code, and provisions user.
+# ============================================================================
 @router.get("/github/login")
 async def github_login():
     state = secrets.token_urlsafe(32)
