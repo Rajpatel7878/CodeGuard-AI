@@ -4,6 +4,9 @@
 
 const DEFAULT_BASE_URL = 'http://localhost:8000'
 const REQUEST_TIMEOUT_MS = 15_000
+// A review runs four AI agents and the fix agent against Gemini, each with its
+// own timeout and retry budget; 15s would abort a review that is still working.
+const REVIEW_TIMEOUT_MS = 300_000
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL).replace(
   /\/+$/,
@@ -31,19 +34,26 @@ function firstDetail(detail) {
   return null
 }
 
-async function request(path, { method = 'GET', body, signal } = {}) {
+async function request(path, { method = 'GET', body, signal, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const abortFromCaller = () => controller.abort()
   signal?.addEventListener('abort', abortFromCaller)
 
   try {
+    const token = localStorage.getItem('token')
+    const headers = {
+      Accept: 'application/json',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    }
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: {
-        Accept: 'application/json',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
+      headers,
+      credentials: 'include',
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
@@ -57,6 +67,12 @@ async function request(path, { method = 'GET', body, signal } = {}) {
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new ApiError('Your session has expired. Sign in again.', {
+          status: 401,
+          detail: data?.detail ?? null,
+        })
+      }
       const detail = firstDetail(data?.detail)
       throw new ApiError(
         detail ?? `The review service returned HTTP ${response.status}.`,
@@ -68,9 +84,10 @@ async function request(path, { method = 'GET', body, signal } = {}) {
   } catch (error) {
     if (error instanceof ApiError) throw error
     if (error.name === 'AbortError') {
-      throw new ApiError('The request timed out. Check that the backend is running.', {
-        status: 0,
-      })
+      throw new ApiError(
+        'The request timed out before the API responded. Check that the backend is running and try again.',
+        { status: 0 },
+      )
     }
     throw new ApiError(
       `Cannot reach the CodeGuard API at ${API_BASE_URL}. Start the backend and try again.`,
@@ -90,6 +107,7 @@ export function createReview({ code, language, filename }) {
   return request('/api/review', {
     method: 'POST',
     body: { code, language, filename: filename ?? null },
+    timeoutMs: REVIEW_TIMEOUT_MS,
   })
 }
 
@@ -101,4 +119,11 @@ export function listReviews({ limit = 50, offset = 0, language } = {}) {
 
 export function getReview(reviewId) {
   return request(`/api/reviews/${encodeURIComponent(reviewId)}`)
+}
+
+export function setFixDecision({ reviewId, findingId, decision }) {
+  const params = new URLSearchParams({ decision, finding_id: findingId })
+  return request(`/api/reviews/${encodeURIComponent(reviewId)}/fix-decision?${params.toString()}`, {
+    method: 'POST',
+  })
 }

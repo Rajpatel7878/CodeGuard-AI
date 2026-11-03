@@ -69,7 +69,7 @@ export default function ReviewCode() {
     setError('')
     setRunError('')
     setPhase('submitting')
-    setAgentStatus(Object.fromEntries(AGENTS.map((agent) => [agent.id, 'running'])))
+    setAgentStatus(initialAgentStatus())
 
     try {
       const review = await createReview({
@@ -94,13 +94,12 @@ export default function ReviewCode() {
             Review code
           </h1>
           <p className="mt-1.5 text-sm text-mist-400">
-            Submit a snippet or file to the review API. Analysis is pending until an AI engine is
-            configured.
+            Submit a snippet or file to the five-agent review pipeline.
           </p>
         </div>
         <span className="chip w-fit">
           <Clock className="h-3 w-3 text-amber-300" aria-hidden="true" />
-          AI analysis pending
+          Five-agent pipeline
         </span>
       </div>
 
@@ -207,15 +206,10 @@ export default function ReviewCode() {
               <span className="chip shrink-0">{AGENTS.length} agents</span>
             </div>
 
-            <p className="mt-3 text-xs text-mist-500">
-              Engine:{' '}
-              <span className="font-medium text-amber-200">not configured</span>
-            </p>
-
             {running ? (
               <LoadingIndicator
                 label="Submitting review"
-                description="Saving the snippet and recording a pending analysis."
+                description="Running static analysis and the review agents."
                 className="mt-4 rounded-lg border border-ink-700 bg-ink-950/40 py-4"
               />
             ) : null}
@@ -230,8 +224,8 @@ export default function ReviewCode() {
           <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3.5 py-3 text-[11px] leading-relaxed text-mist-300">
             <Info className="mt-px h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden="true" />
             <p>
-              AI analysis is not configured yet. Submissions are stored with a pending status and no
-              generated findings. The backend never executes your code.
+              Reviews are analysed statically and, when the backend has a Gemini key configured, by
+              the five AI agents. The backend never executes your code.
             </p>
           </div>
         </aside>
