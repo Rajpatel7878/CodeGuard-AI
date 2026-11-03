@@ -178,6 +178,8 @@ export default function Settings() {
             <InfoRow label="Email address" value={user?.email || 'N/A'} />
             <InfoRow label="Authentication provider" value={user?.provider || 'email'} />
             <InfoRow label="Account created" value={formatDate(user?.created_at)} />
+            <InfoRow label="Account status" value={user?.is_active !== false ? 'Active' : 'Suspended'} />
+            <InfoRow label="Verification" value={user?.is_verified ? 'Verified' : 'Standard'} />
             <div className="mt-4 pt-4 border-t border-ink-700/70">
               <button onClick={handleLogout} className="btn btn-danger w-full sm:w-auto">
                 <LogOut className="h-4 w-4" />
