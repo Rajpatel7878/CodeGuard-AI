@@ -1,6 +1,7 @@
-import { ChevronRight, Menu, Settings, ShieldCheck } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { ChevronRight, LogOut, Menu, Settings, ShieldCheck } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useReviews } from '../context/ReviewContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { cn } from '../lib/cn.js'
 import { getPageTitle } from '../lib/navigation.jsx'
 
@@ -9,7 +10,24 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || 'ALPHA CodeGuard AI'
 export default function Navbar({ onOpenSidebar }) {
   const { pathname } = useLocation()
   const { apiAvailable } = useReviews()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const pageTitle = getPageTitle(pathname)
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
+
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-ink-700/80 bg-ink-950/85 backdrop-blur-md">
@@ -69,16 +87,37 @@ export default function Navbar({ onOpenSidebar }) {
             <Settings className="h-4.5 w-4.5" />
           </Link>
 
+          <button
+            onClick={handleLogout}
+            aria-label="Logout"
+            className="btn btn-ghost p-2"
+            title="Logout"
+          >
+            <LogOut className="h-4.5 w-4.5" />
+          </button>
+
           <div className="flex items-center gap-2.5 border-l border-ink-700/80 pl-2.5 sm:pl-3.5">
-            <span
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-gradient-to-br from-brand-500/30 to-aqua-500/20 text-[11px] font-semibold text-white"
-              aria-hidden="true"
-            >
-              AL
-            </span>
+            {user?.profile_picture ? (
+              <img
+                src={user.profile_picture}
+                alt={user.full_name}
+                className="h-8 w-8 rounded-full border border-ink-600"
+              />
+            ) : (
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-gradient-to-br from-brand-500/30 to-aqua-500/20 text-[11px] font-semibold text-white"
+                aria-hidden="true"
+              >
+                {getInitials(user?.full_name)}
+              </span>
+            )}
             <div className="hidden leading-tight sm:block">
-              <p className="text-xs font-medium text-mist-200">Team ALPHA</p>
-              <p className="text-[11px] text-mist-500">{APP_NAME}</p>
+              <p className="text-xs font-medium text-mist-200 truncate max-w-[120px]">
+                {user?.full_name || 'User'}
+              </p>
+              <p className="text-[11px] text-mist-500 truncate max-w-[120px]">
+                {user?.email || APP_NAME}
+              </p>
             </div>
           </div>
         </div>
