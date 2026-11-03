@@ -5,11 +5,15 @@ export function mapReview(payload) {
   if (!payload) return null
 
   const agents = (payload.agents ?? []).map((agent) => ({
-    id: agent.id,
-    name: agent.name,
+    id: agent.id ?? agent.agent_id,
+    agentId: agent.agent_id ?? agent.id,
+    name: agent.name ?? agent.agent_name,
+    agentName: agent.agent_name ?? agent.name,
     status: agent.status ?? 'pending',
     findings: agent.findings ?? 0,
-    durationMs: agent.duration_ms ?? null,
+    durationMs: agent.duration_ms ?? agent.durationMs ?? null,
+    summary: agent.summary ?? null,
+    errorMessage: agent.error_message ?? agent.errorMessage ?? null,
   }))
 
   return {
@@ -27,13 +31,27 @@ export function mapReview(payload) {
     summary: payload.summary ?? null,
     issues: (payload.issues ?? []).map((issue) => ({
       id: issue.id,
-      agentId: issue.agent_id,
-      agentName: issue.agent_name,
+      agentId: issue.agent_id ?? issue.agentId,
+      agentName: issue.agent_name ?? issue.agentName,
       severity: issue.severity,
       title: issue.title,
       description: issue.description,
-      suggestion: issue.suggestion,
-      line: issue.line,
+      suggestion: issue.suggestion ?? issue.suggested_fix,
+      suggestedFix: issue.suggested_fix ?? issue.suggestion,
+      line: issue.line ?? issue.start_line,
+      startLine: issue.start_line ?? issue.line,
+      endLine: issue.end_line,
+      file: issue.file,
+      category: issue.category,
+      confidence: issue.confidence,
+      explanation: issue.explanation,
+      source: issue.source,
+      diff: issue.diff,
+      hasDiff: issue.has_diff ?? issue.hasDiff ?? false,
+      validationStatus: issue.validation_status ?? issue.validationStatus,
+      validationDetails: issue.validation_details ?? issue.validationDetails,
+      originalFindingId: issue.original_finding_id ?? issue.originalFindingId,
+      originalAgentId: issue.original_agent_id ?? issue.originalAgentId,
     })),
     agents,
     counts: {
@@ -41,10 +59,13 @@ export function mapReview(payload) {
       high: 0,
       medium: 0,
       low: 0,
+      info: 0,
       total: 0,
       ...(payload.counts ?? {}),
     },
     durationMs: payload.duration_ms ?? null,
+    fixDecisions: payload.fix_decisions ?? {},
+    fixedCode: payload.fixed_code ?? null,
     isDemo: false,
   }
 }

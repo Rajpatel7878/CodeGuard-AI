@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { createReview as requestReview, listReviews } from '../lib/api.js'
+import { createReview as requestReview, listReviews, setFixDecision as requestSetFixDecision, getReview } from '../lib/api.js'
 import { mapReview } from '../lib/reviewMapper.js'
+import { useAuth } from './AuthContext.jsx'
 
 const ReviewContext = createContext(null)
 const SETTINGS_KEY = 'codeguard.settings.v1'
@@ -9,6 +10,7 @@ export const DEFAULT_SETTINGS = {
   defaultLanguage: 'javascript',
   editorFontSize: 13,
   wordWrap: false,
+  minimap: false,
 }
 
 function readSettings() {
@@ -21,6 +23,8 @@ function readSettings() {
 }
 
 export function ReviewProvider({ children }) {
+  const { user } = useAuth()
+  const userId = user?.id ?? null
   const [reviews, setReviews] = useState([])
   const [historyState, setHistoryState] = useState('loading')
   const [historyError, setHistoryError] = useState('')
@@ -53,9 +57,17 @@ export function ReviewProvider({ children }) {
     }
   }, [])
 
+  // Reviews are per-account: load them only once the signed-in user is known,
+  // and drop the cache on sign-out so the next account never sees them.
   useEffect(() => {
+    if (!userId) {
+      setReviews([])
+      setHistoryState('idle')
+      setHistoryError('')
+      return
+    }
     void refreshReviews()
-  }, [refreshReviews])
+  }, [userId, refreshReviews])
 
   const createReview = useCallback(async ({ code, language, filename }) => {
     const response = await requestReview({ code, language, filename })
@@ -63,6 +75,25 @@ export function ReviewProvider({ children }) {
     setReviews((previous) => [review, ...previous.filter((item) => item.id !== review.id)])
     setHistoryState('ready')
     setApiAvailable(true)
+    return review
+  }, [])
+
+  const setFixDecision = useCallback(async ({ reviewId, findingId, decision }) => {
+    const response = await requestSetFixDecision({ reviewId, findingId, decision })
+    const review = mapReview(response)
+    setReviews((previous) => previous.map((item) => (item.id === review.id ? review : item)))
+    setHistoryState('ready')
+    setApiAvailable(true)
+    return review
+  }, [])
+
+  const fetchReview = useCallback(async (reviewId) => {
+    const response = await getReview(reviewId)
+    const review = mapReview(response)
+    setReviews((previous) => {
+      const exists = previous.some((item) => item.id === review.id)
+      return exists ? previous.map((item) => (item.id === review.id ? review : item)) : [review, ...previous]
+    })
     return review
   }, [])
 
@@ -78,6 +109,8 @@ export function ReviewProvider({ children }) {
     () => ({
       reviews,
       createReview,
+      setFixDecision,
+      fetchReview,
       refreshReviews,
       historyState,
       historyError,
@@ -89,6 +122,8 @@ export function ReviewProvider({ children }) {
     [
       reviews,
       createReview,
+      setFixDecision,
+      fetchReview,
       refreshReviews,
       historyState,
       historyError,
