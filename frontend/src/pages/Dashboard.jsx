@@ -104,7 +104,7 @@ export default function Dashboard() {
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
           <p>
             {stats.pending} {stats.pending === 1 ? 'review is' : 'reviews are'} awaiting AI
-            analysis. Findings and quality scores appear once an LLM provider is configured.
+            analysis. Findings and quality scores appear once the backend has completed analysis.
           </p>
         </div>
       ) : null}
@@ -293,7 +293,7 @@ export default function Dashboard() {
                 </ul>
 
                 <p className="mt-4 border-t border-ink-700/70 pt-3 text-[11px] leading-relaxed text-mist-500">
-                  Findings stay at zero until AI analysis is configured.
+                  Findings are counted from the stored reviews above.
                 </p>
               </section>
 
