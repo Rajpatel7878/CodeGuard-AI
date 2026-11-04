@@ -4,8 +4,9 @@
 
 const DEFAULT_BASE_URL = 'http://localhost:8000'
 const REQUEST_TIMEOUT_MS = 15_000
-// A review runs four AI agents and the fix agent against Gemini, each with its
-// own timeout and retry budget; 15s would abort a review that is still working.
+// A review runs four AI agents and the fix agent against the active AI provider,
+// each with its own timeout and retry budget; 15s would abort a review that is
+// still working.
 const REVIEW_TIMEOUT_MS = 300_000
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL).replace(

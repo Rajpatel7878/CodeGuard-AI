@@ -1,8 +1,10 @@
 """LLM provider boundary.
 
 This module reports the configuration honestly so the API can return a pending
-status instead of inventing findings. The review pipeline uses Gemini through
-:mod:`app.llm.gemini_service`; ``is_available`` is what gates analysis.
+status instead of inventing findings. The review pipeline uses the active
+provider through :mod:`app.llm.provider`; ``is_available`` is what gates
+analysis. OpenRouter (the free-models router) is preferred by default, with
+Gemini kept as an alternative.
 """
 
 from __future__ import annotations
@@ -10,12 +12,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
-
-NOT_CONFIGURED_MESSAGE = (
-    "AI analysis is not configured. Set GEMINI_API_KEY in the backend "
-    "environment to enable the five review agents; reviews are stored as "
-    "pending until then."
+from app.llm.provider import (
+    GEMINI,
+    NO_PROVIDER_MESSAGE,
+    OPENROUTER,
+    preferred_provider,
+    resolve_provider,
 )
+
+NOT_CONFIGURED_MESSAGE = NO_PROVIDER_MESSAGE
 
 
 @dataclass(frozen=True)
@@ -33,32 +38,27 @@ class LlmClient:
 def get_llm_client() -> LlmClient:
     """Describe the current analysis engine without contacting a provider.
 
-    The only implemented provider is Gemini, configured with ``GEMINI_API_KEY``.
-    Legacy ``LLM_PROVIDER`` / ``LLM_API_KEY`` settings are still reported so old
-    deployments get an accurate message rather than a silent no-op.
+    The active provider is selected by :func:`app.llm.provider.resolve_provider`
+    from ``DEFAULT_LLM_PROVIDER`` and the configured API keys.
     """
-    if settings.gemini_api_key:
+    provider = resolve_provider()
+    if provider == OPENROUTER:
         return LlmClient(
-            provider="gemini",
+            provider=OPENROUTER,
+            configured=True,
+            status="configured",
+            message=f"OpenRouter analysis is enabled ({settings.openrouter_model}).",
+        )
+    if provider == GEMINI:
+        return LlmClient(
+            provider=GEMINI,
             configured=True,
             status="configured",
             message=f"Gemini analysis is enabled ({settings.gemini_model}).",
         )
 
-    provider = (settings.llm_provider or "none").lower()
-    if provider != "none" and settings.llm_api_key:
-        return LlmClient(
-            provider=provider,
-            configured=False,
-            status="not_configured",
-            message=(
-                f"LLM provider '{provider}' is selected, but only Gemini is "
-                "implemented. Set GEMINI_API_KEY instead; reviews remain pending."
-            ),
-        )
-
     return LlmClient(
-        provider=provider,
+        provider=preferred_provider(),
         configured=False,
         status="not_configured",
         message=NOT_CONFIGURED_MESSAGE,

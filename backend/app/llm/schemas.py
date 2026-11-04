@@ -97,6 +97,15 @@ class Finding(BaseModel):
         return self
 
 
+class AgentCategoryAnalysis(BaseModel):
+    """One category section of a combined four-category review."""
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    summary: str = Field(default="", max_length=2000)
+    findings: list[Finding] = Field(default_factory=list)
+
+
 class GeminiAnalysis(BaseModel):
     """A validated analysis response returned by :class:`GeminiCodeReviewService`."""
 
@@ -104,6 +113,68 @@ class GeminiAnalysis(BaseModel):
 
     summary: str = Field(default="", max_length=2000)
     findings: list[Finding] = Field(default_factory=list)
+    warnings: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Adjustments made while validating the model output, such as "
+            "dropped out-of-range findings."
+        ),
+    )
+    model_name: str | None = None
+
+
+#: Canonical keys of a combined review. One Gemini request fills all four.
+COMBINED_CATEGORY_KEYS: tuple[str, ...] = (
+    "bug",
+    "security",
+    "performance",
+    "quality",
+)
+
+#: Alternative category names a model may return, mapped to a canonical key.
+COMBINED_CATEGORY_ALIASES: dict[str, str] = {
+    "bug": "bug",
+    "bugs": "bug",
+    "bug_detection": "bug",
+    "logic": "bug",
+    "correctness": "bug",
+    "security": "security",
+    "security_analysis": "security",
+    "vulnerability": "security",
+    "performance": "performance",
+    "performance_optimization": "performance",
+    "perf": "performance",
+    "quality": "quality",
+    "code_quality": "quality",
+    "style": "quality",
+    "maintainability": "quality",
+}
+
+
+def normalize_combined_category(value: Any) -> str | None:
+    """Map a model-reported category name to a canonical combined key."""
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower().replace("-", "_").replace(" ", "_")
+    return COMBINED_CATEGORY_ALIASES.get(key)
+
+
+class CombinedAnalysis(BaseModel):
+    """A validated four-category response from a single Gemini request.
+
+    ``categories`` is always populated with all four canonical keys so callers
+    can emit one agent result per category without guessing what the model
+    returned.
+    """
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    summary: str = Field(default="", max_length=2000)
+    categories: dict[str, AgentCategoryAnalysis] = Field(
+        default_factory=lambda: {
+            key: AgentCategoryAnalysis() for key in COMBINED_CATEGORY_KEYS
+        }
+    )
     warnings: list[str] = Field(
         default_factory=list,
         description=(

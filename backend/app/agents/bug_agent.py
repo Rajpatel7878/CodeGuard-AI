@@ -26,14 +26,13 @@ from app.llm.schemas import Finding, FindingSource, Severity
 logger = logging.getLogger(__name__)
 
 # Import the real service function so it can be overridden in tests
-from app.llm.gemini_service import (
-    GeminiServiceError,
-    get_gemini_service as _get_gemini_service,
-)
+from app.llm.gemini_service import GeminiServiceError
+from app.llm.provider import get_review_service as _get_review_service
 
-# Module-level variable: can be patched in tests via monkeypatch.setattr(
-#   bug_module, "get_gemini_service", fake_service)
-get_gemini_service = _get_gemini_service
+# Provider-neutral getter (OpenRouter or Gemini). The historical name is kept
+# so existing tests and callers can still patch this module attribute, e.g.
+#   monkeypatch.setattr(bug_module, "get_gemini_service", fake_service)
+get_gemini_service = _get_review_service
 
 BUG_SYSTEM_INSTRUCTION = """You are the Bug Detection Agent for ALPHA CodeGuard AI. Your job is to find actual bugs in submitted source code -- not style issues, not preferences, but real defects that could cause incorrect behavior, crashes, or security problems.
 

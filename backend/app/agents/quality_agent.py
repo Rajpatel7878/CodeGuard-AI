@@ -89,12 +89,12 @@ Respond with a single JSON object matching this exact shape and nothing else \
 # Module-level hook (overridable by tests via monkeypatch)
 # ---------------------------------------------------------------------------
 
-from app.llm.gemini_service import (
-    GeminiServiceError,
-    get_gemini_service as _get_gemini_service,
-)
+from app.llm.gemini_service import GeminiServiceError
+from app.llm.provider import get_review_service as _get_review_service
 
-get_gemini_service = _get_gemini_service
+# Provider-neutral getter (OpenRouter or Gemini). The historical name is kept
+# so existing tests and callers can still patch this module attribute.
+get_gemini_service = _get_review_service
 
 
 # ---------------------------------------------------------------------------

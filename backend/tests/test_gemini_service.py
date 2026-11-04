@@ -281,17 +281,31 @@ def test_submitted_code_cannot_inject_instructions() -> None:
     assert prompt.rstrip().endswith("--- END SUBMITTED CODE ---")
 
 
-def test_rate_limit_is_retried_then_reported() -> None:
+def test_quota_exceeded_is_reported_without_retrying() -> None:
+    """HTTP 429 means the quota is gone: retrying only consumes more quota."""
     service, models, sleeps = build_service(
         [api_error(429, "quota exceeded", "RESOURCE_EXHAUSTED")], max_attempts=3
     )
 
-    with pytest.raises(GeminiRateLimitError, match="rate limit"):
+    with pytest.raises(GeminiRateLimitError, match="quota exceeded"):
         analyze(service)
 
-    assert len(models.calls) == 3
-    assert len(sleeps) == 2
-    assert 0 < sleeps[0] < sleeps[1]
+    assert len(models.calls) == 1
+    assert sleeps == []
+
+
+def test_quota_exceeded_pauses_further_calls() -> None:
+    """A second call after a 429 short-circuits instead of hitting the API."""
+    service, models, _ = build_service([api_error(429, "quota exceeded")])
+
+    with pytest.raises(GeminiRateLimitError):
+        analyze(service)
+
+    with pytest.raises(GeminiRateLimitError, match="paused") as error:
+        analyze(service)
+
+    assert "quota" in str(error.value).lower()
+    assert len(models.calls) == 1
 
 
 def test_transient_server_error_is_retried_and_can_succeed() -> None:

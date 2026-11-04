@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import app.agents.orchestrator as orchestrator
 from app.agents.orchestrator import (
     AgentResult,
     OrchestratorResult,
@@ -21,6 +22,16 @@ from app.agents.orchestrator import (
 )
 from app.llm.gemini_service import GeminiServiceError, GeminiTimeoutError
 from app.llm.schemas import FindingSource
+
+
+@pytest.fixture(autouse=True)
+def _per_agent_review_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests patch the four per-agent runners individually.
+
+    Combined (one-request) review is covered in ``test_combined_agent.py``;
+    here the legacy four-request path must be selected explicitly.
+    """
+    monkeypatch.setattr(orchestrator, "_DEFAULT_REVIEW_MODE", "per_agent")
 
 
 # ---------------------------------------------------------------------------

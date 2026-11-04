@@ -224,8 +224,8 @@ export default function ReviewCode() {
           <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3.5 py-3 text-[11px] leading-relaxed text-mist-300">
             <Info className="mt-px h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden="true" />
             <p>
-              Reviews are analysed statically and, when the backend has a Gemini key configured, by
-              the five AI agents. The backend never executes your code.
+              Reviews are analysed statically and, when the backend has an AI provider key
+              configured, by the five AI agents. The backend never executes your code.
             </p>
           </div>
         </aside>

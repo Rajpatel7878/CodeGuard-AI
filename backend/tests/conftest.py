@@ -15,12 +15,20 @@ os.environ["DATABASE_URL"] = f"sqlite:///{(_TEMP_DIR / 'test.db').as_posix()}"
 os.environ["LLM_PROVIDER"] = "none"
 os.environ["LLM_API_KEY"] = ""
 os.environ["MAX_CODE_LENGTH"] = "200000"
-# Tests never call Gemini. An empty value keeps a developer's local key out of
-# the test run and still lets python-dotenv find nothing to load.
+os.environ["DEFAULT_LLM_PROVIDER"] = "openrouter"
+# Tests never call a real provider. Empty values keep a developer's local keys
+# out of the test run and still let python-dotenv find nothing to load.
+os.environ["OPENROUTER_API_KEY"] = ""
+os.environ["OPENROUTER_MODEL"] = "openrouter/free"
+os.environ["OPENROUTER_TIMEOUT_SECONDS"] = "5"
+os.environ["OPENROUTER_MAX_ATTEMPTS"] = "2"
+os.environ["OPENROUTER_QUOTA_COOLDOWN_SECONDS"] = "300"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["GEMINI_MODEL"] = "gemini-3.8-flash"
 os.environ["GEMINI_TIMEOUT_SECONDS"] = "5"
 os.environ["GEMINI_MAX_ATTEMPTS"] = "2"
+os.environ["GEMINI_REVIEW_MODE"] = "combined"
+os.environ["GEMINI_QUOTA_COOLDOWN_SECONDS"] = "300"
 # Fixtures register several accounts per run; per-IP auth limits would block them.
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 
@@ -35,6 +43,19 @@ def fresh_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+
+
+@pytest.fixture(autouse=True)
+def clear_quota_cooldown() -> Generator[None, None, None]:
+    """A quota error in one test must not pause provider calls in the next."""
+    from app.llm.gemini_service import reset_quota_state
+    from app.llm.openrouter_service import reset_quota_state as reset_openrouter
+
+    reset_quota_state()
+    reset_openrouter()
+    yield
+    reset_quota_state()
+    reset_openrouter()
 
 
 @pytest.fixture
